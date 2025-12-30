@@ -11,8 +11,8 @@ const base64ToUint8Array = (base64String: string): Uint8Array => {
   return bytes;
 };
 
-// Safety check for process.env to prevent crashes in browser-only environments if not polyfilled
-const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : "";
+// Access the API Key injected by Vite during the build
+const apiKey = process.env.API_KEY as string;
 
 const ai = new GoogleGenAI({ apiKey });
 
@@ -20,7 +20,10 @@ export const validateApiKey = (): { valid: boolean; error?: string } => {
   if (!apiKey) {
     return { valid: false, error: "API Key is missing. Please check your Vercel Environment Variables." };
   }
-  if (apiKey.startsWith("vck_")) {
+  // Vercel sometimes wraps keys in quotes if configured incorrectly, handle that edge case
+  const cleanKey = apiKey.replace(/"/g, '');
+  
+  if (cleanKey.startsWith("vck_")) {
     return { 
       valid: false, 
       error: "Configuration Error: You are using a Vercel AI Key ('vck_...'). This app requires a standard Google Cloud API Key (starting with 'AIza...'). Please update the API_KEY environment variable in Vercel Settings." 
