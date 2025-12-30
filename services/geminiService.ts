@@ -1,6 +1,14 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { HealthReport, UserData } from "../types";
 
+// Declare process to avoid TypeScript errors during build (tsc)
+// This lets the compiler know that 'process.env.API_KEY' will be defined (replaced by Vite)
+declare const process: {
+  env: {
+    API_KEY: string | undefined;
+  };
+};
+
 // Helper to decode base64 to Uint8Array
 const base64ToUint8Array = (base64String: string): Uint8Array => {
   const binaryString = atob(base64String);
@@ -12,7 +20,9 @@ const base64ToUint8Array = (base64String: string): Uint8Array => {
 };
 
 // Access the API Key injected by Vite during the build
-const apiKey = process.env.API_KEY as string;
+// We allow empty string fallback to prevent runtime crash if variable is missing
+const rawApiKey = process.env.API_KEY || "";
+const apiKey = rawApiKey.replace(/"/g, ''); // Remove accidental quotes from env vars
 
 const ai = new GoogleGenAI({ apiKey });
 
@@ -20,10 +30,8 @@ export const validateApiKey = (): { valid: boolean; error?: string } => {
   if (!apiKey) {
     return { valid: false, error: "API Key is missing. Please check your Vercel Environment Variables." };
   }
-  // Vercel sometimes wraps keys in quotes if configured incorrectly, handle that edge case
-  const cleanKey = apiKey.replace(/"/g, '');
   
-  if (cleanKey.startsWith("vck_")) {
+  if (apiKey.startsWith("vck_")) {
     return { 
       valid: false, 
       error: "Configuration Error: You are using a Vercel AI Key ('vck_...'). This app requires a standard Google Cloud API Key (starting with 'AIza...'). Please update the API_KEY environment variable in Vercel Settings." 
